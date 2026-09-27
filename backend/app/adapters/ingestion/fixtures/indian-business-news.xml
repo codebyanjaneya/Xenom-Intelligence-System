@@ -1,0 +1,31 @@
+<rss version="2.0">
+  <channel>
+    <title>Indian Business &amp; Industry News</title>
+    <link>https://business.example.com</link>
+    <description>News from India's major business and industrial sectors</description>
+    <item>
+      <title>ACE focuses on digital transformation and IoT integration in supply chain</title>
+      <link>https://business.example.com/ace-iot-supply-chain</link>
+      <description>ACE has announced a major digital transformation initiative incorporating IoT sensors and edge computing throughout its supply chain network. The company is using artificial intelligence to optimize logistics and predict demand patterns.</description>
+      <pubDate>Thu, 17 Sep 2026 15:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>VIPS expands retail operations with AI-powered customer analytics</title>
+      <link>https://business.example.com/vips-ai-retail</link>
+      <description>VIPS has deployed machine learning systems to analyze customer behavior and preferences across its retail locations. The AI platform processes multimodal data including transaction history, browsing patterns, and emotion understanding from customer interactions.</description>
+      <pubDate>Wed, 16 Sep 2026 12:15:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>ISM manufacturing sector embraces Industry 4.0 and robotic automation</title>
+      <link>https://business.example.com/ism-industry40</link>
+      <description>ISM's manufacturing operations are implementing Industry 4.0 technologies including robotics, AI-driven quality control, and digital twins for production optimization. The company is using sensors and edge AI to monitor real-time production metrics.</description>
+      <pubDate>Tue, 15 Sep 2026 10:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Vikas infrastructure projects leverage AI for project management and optimization</title>
+      <link>https://business.example.com/vikas-ai-infrastructure</link>
+      <description>Vikas has implemented AI-powered project management systems for large infrastructure projects. Using machine learning and predictive analytics, the company improves project timelines, cost control, and resource allocation across multiple concurrent projects.</description>
+      <pubDate>Mon, 14 Sep 2026 14:20:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

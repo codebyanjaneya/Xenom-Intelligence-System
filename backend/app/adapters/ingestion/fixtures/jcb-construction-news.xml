@@ -1,0 +1,25 @@
+<rss version="2.0">
+  <channel>
+    <title>Construction &amp; Heavy Equipment India</title>
+    <link>https://construction.example.com</link>
+    <description>Industry news for construction and heavy equipment</description>
+    <item>
+      <title>JCB announces new AI-powered equipment diagnostics for construction sites</title>
+      <link>https://construction.example.com/jcb-ai-diagnostics</link>
+      <description>JCB has launched a new artificial intelligence system that provides real-time diagnostics for construction equipment. The system uses machine learning algorithms to predict maintenance needs before failures occur, reducing downtime on construction sites across India.</description>
+      <pubDate>Thu, 17 Sep 2026 14:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>India's construction sector shows digital transformation with IoT sensors on heavy machinery</title>
+      <link>https://construction.example.com/india-iot-equipment</link>
+      <description>Major equipment manufacturers including JCB are integrating IoT and edge computing solutions into heavy machinery. These connected devices provide real-time data on equipment health, fuel consumption, and operator performance across construction projects.</description>
+      <pubDate>Wed, 16 Sep 2026 09:15:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>JCB and competitors focus on autonomous construction equipment development</title>
+      <link>https://construction.example.com/autonomous-equipment</link>
+      <description>JCB is investing heavily in robotics and autonomous vehicle technology for construction sites. The company is developing equipment that can operate with minimal human intervention, utilizing AI and sensor fusion technologies.</description>
+      <pubDate>Tue, 15 Sep 2026 11:45:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

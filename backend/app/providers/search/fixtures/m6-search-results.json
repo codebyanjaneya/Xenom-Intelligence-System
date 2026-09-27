@@ -1,0 +1,31 @@
+[
+  {
+    "queries": [
+      "ai robotics",
+      "artificial intelligence robotics"
+    ],
+    "results": [
+      {
+        "title": "Synthetic result 1: AI robotics research overview",
+        "url": "https://synthetic.example.test/results/ai-robotics-1",
+        "snippet": "Synthetic fixture result about artificial intelligence and robotics.",
+        "discovered_at": "2026-09-16T09:00:00Z",
+        "published_at": "2026-09-15T09:00:00Z"
+      },
+      {
+        "title": "Synthetic result 2: Robotics systems and AI methods",
+        "url": "https://synthetic.example.test/results/ai-robotics-2",
+        "snippet": "Synthetic fixture result describing a robotics and AI systems topic.",
+        "discovered_at": "2026-09-16T08:00:00Z",
+        "published_at": "2026-09-15T10:00:00Z"
+      },
+      {
+        "title": "Synthetic result 3: AI robotics test collection",
+        "url": "https://synthetic.example.test/results/ai-robotics-3",
+        "snippet": "Synthetic fixture result included only for deterministic development demos.",
+        "discovered_at": "2026-09-16T07:00:00Z",
+        "published_at": "2026-09-15T11:00:00Z"
+      }
+    ]
+  }
+]

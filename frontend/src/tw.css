@@ -1,0 +1,70 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+/* Restrained editorial palette for the executive intelligence shell — no gradients, no glow, no 3D.
+   Light is the default (paper-like); dark is a true dark, not just an inverted light.
+   Tokens live as plain CSS vars (swapped by [data-theme]); @theme inline exposes them as Tailwind utilities
+   (bg-bg, bg-surface, text-ink, border-border, ...). */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-2: #f1f1ee;
+  --border: #e4e4e0;
+  --ink: #17181a;
+  --ink-muted: #5b5d63;
+  --ink-faint: #94969c;
+  --accent: #1f6f5c;
+  --accent-soft: #e6f0ec;
+  --warn: #a15c1f;
+  --warn-soft: #f5ead9;
+  --danger: #a13a3a;
+  --danger-soft: #f6e4e4;
+  --focus: #1f6f5c;
+}
+
+[data-theme='dark'] {
+  --bg: #101113;
+  --surface: #17181b;
+  --surface-2: #1d1f22;
+  --border: #2a2c30;
+  --ink: #eceef0;
+  --ink-muted: #9a9da3;
+  --ink-faint: #6b6e74;
+  --accent: #5fb79b;
+  --accent-soft: #16332b;
+  --warn: #d9a256;
+  --warn-soft: #35291a;
+  --danger: #e08585;
+  --danger-soft: #3a2222;
+  --focus: #5fb79b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #101113; --surface: #17181b; --surface-2: #1d1f22; --border: #2a2c30;
+    --ink: #eceef0; --ink-muted: #9a9da3; --ink-faint: #6b6e74;
+    --accent: #5fb79b; --accent-soft: #16332b; --warn: #d9a256; --warn-soft: #35291a;
+    --danger: #e08585; --danger-soft: #3a2222; --focus: #5fb79b;
+  }
+}
+
+@theme inline {
+  --font-sans: -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-focus: var(--focus);
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font-sans); }

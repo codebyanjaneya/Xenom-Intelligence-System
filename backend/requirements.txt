@@ -1,0 +1,15 @@
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+pydantic-settings>=2.4
+httpx>=0.27
+playwright>=1.50
+beautifulsoup4>=4.12
+python-dateutil>=2.9
+Pillow>=10.0
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29
+greenlet>=3.0
+alembic>=1.13
+argon2-cffi>=23.1
+pyjwt>=2.8
+pytest>=8.3

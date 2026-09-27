@@ -1,0 +1,33 @@
+# Environment / secrets
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+.mypy_cache/
+
+# Local database volume (if bind-mounted)
+pgdata/
+
+# Node
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Generated / scratch artifacts (never part of the implementation)
+logs/
+*.log
+frontend/dist/
+backend/evaluation/data/*_report.json
+backend/evaluation/data/search_queries_labelled.json
+backend/evaluation/data/search_labelling_sheet.md
+backend/fine_tuning_data/

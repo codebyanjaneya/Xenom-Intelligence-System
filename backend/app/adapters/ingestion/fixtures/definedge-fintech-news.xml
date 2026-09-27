@@ -1,0 +1,25 @@
+<rss version="2.0">
+  <channel>
+    <title>Indian FinTech &amp; Trading News</title>
+    <link>https://fintech.example.com</link>
+    <description>News and updates from India's financial technology sector</description>
+    <item>
+      <title>Definedge launches machine learning platform for real-time market analysis</title>
+      <link>https://fintech.example.com/definedge-ml-platform</link>
+      <description>Definedge has announced a new machine learning platform that uses advanced algorithms to analyze market trends and provide trading signals. The platform processes multimodal data from multiple sources and uses deep learning models to detect patterns in equity markets.</description>
+      <pubDate>Thu, 17 Sep 2026 10:20:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>FinTech platforms adopt generative AI for investment recommendations</title>
+      <link>https://fintech.example.com/ai-recommendations</link>
+      <description>Companies like Definedge are leveraging generative AI and large language models to provide personalized investment advice to retail traders. These systems analyze market data, news, and individual risk profiles using artificial intelligence to make recommendations.</description>
+      <pubDate>Wed, 16 Sep 2026 13:30:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Definedge integrates blockchain for secure transaction settlement</title>
+      <link>https://fintech.example.com/definedge-blockchain</link>
+      <description>Definedge has integrated blockchain technology into its trading platform to improve settlement efficiency and reduce counterparty risk. The solution uses distributed ledger technology to create an immutable record of transactions.</description>
+      <pubDate>Tue, 15 Sep 2026 08:45:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

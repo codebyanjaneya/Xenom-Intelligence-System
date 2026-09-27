@@ -1,0 +1,5 @@
+# Tooling config only (M0). Dependencies live in requirements.txt.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

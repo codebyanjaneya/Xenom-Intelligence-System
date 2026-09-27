@@ -1,0 +1,205 @@
+{
+  "_readme": "Human labels only. Set labelled=true and list expected_article_ids (frozen-corpus ids). labelled=true with an empty list means 'should return nothing'. Never paste engine output in as labels.",
+  "queries": [
+    {
+      "id": "ace-1",
+      "query": "ACE Limited supply chain",
+      "category": "client:ACE",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "ace-2",
+      "query": "ACE logistics warehouse India",
+      "category": "client:ACE",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "defd-1",
+      "query": "Definedge trading platform",
+      "category": "client:Definedge",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "defd-2",
+      "query": "Definedge",
+      "category": "company-name",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "ism-1",
+      "query": "India Semiconductor Mission",
+      "category": "client:ISM",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "ism-2",
+      "query": "semiconductor fab supply chain",
+      "category": "topic",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "jcb-1",
+      "query": "JCB excavator launch",
+      "category": "client:JCB",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "jcb-2",
+      "query": "JCB construction equipment India",
+      "category": "client:JCB",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "vikas-1",
+      "query": "Vikas infrastructure project",
+      "category": "client:VIKAS",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "vips-1",
+      "query": "VIPS retail customer analytics",
+      "category": "client:VIPS",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "topic-1",
+      "query": "artificial intelligence manufacturing",
+      "category": "topic",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "topic-2",
+      "query": "IoT sensors construction machinery",
+      "category": "topic",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "topic-3",
+      "query": "blockchain settlement fintech",
+      "category": "topic",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "multi-1",
+      "query": "government semiconductor incentive scheme",
+      "category": "multi-word",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "multi-2",
+      "query": "autonomous construction machinery",
+      "category": "multi-word",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "amb-1",
+      "query": "ACE",
+      "category": "ambiguous",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "amb-2",
+      "query": "ISM",
+      "category": "ambiguous",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "amb-3",
+      "query": "Vikas",
+      "category": "ambiguous",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "nomatch-1",
+      "query": "quantum computing satellite launch",
+      "category": "no-match",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    },
+    {
+      "id": "nomatch-2",
+      "query": "zzzzqx nonexistent term",
+      "category": "no-match",
+      "entity_key": null,
+      "source": null,
+      "labelled": false,
+      "expected_article_ids": [],
+      "notes": ""
+    }
+  ]
+}
