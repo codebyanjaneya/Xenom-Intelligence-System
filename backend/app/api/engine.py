@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func as sa_func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import allowed_entity_keys, client_key_allowed, get_current_user, require_admin, require_client_access
 from app.config import taxonomy
 from app.db.session import get_session
 from app.services import chunking, embeddings
@@ -31,13 +31,14 @@ router = APIRouter(prefix="/engine", tags=["engine"])
 
 
 @router.post("/fact-check", response_model=FactCheckResult, dependencies=[Depends(get_current_user)])
-async def run_fact_check(payload: FactCheckRequest, session: AsyncSession = Depends(get_session)) -> FactCheckResult:
+async def run_fact_check(payload: FactCheckRequest, session: AsyncSession = Depends(get_session),
+                         current_user: User = Depends(get_current_user)) -> FactCheckResult:
     """Given a headline/URL/claim, search the stored evidenced corpus for corroboration and, if an LLM is
     configured, get a verdict grounded only in that corroboration or a clear red flag in the text itself."""
     clean = payload.input.strip()
     if not clean:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="input must not be empty")
-    return await fact_check.check_news(session, clean)
+    return await fact_check.check_news(session, clean, allowed_entity_keys=await allowed_entity_keys(session, current_user))
 
 
 @router.get("/capabilities", dependencies=[Depends(get_current_user)])
@@ -154,8 +155,9 @@ async def recall_scan(payload: RecallScan, session: AsyncSession = Depends(get_s
 
 @router.get("/recall", dependencies=[Depends(get_current_user)])
 async def recall_list(status_filter: Literal["open", "resolved", "dismissed"] = Query(default="open", alias="status"),
-                      session: AsyncSession = Depends(get_session)) -> list[dict]:
-    return await recall.list_candidates(session, status_filter)
+                      session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)) -> list[dict]:
+    scope = await allowed_entity_keys(session, current_user)
+    return [item for item in await recall.list_candidates(session, status_filter) if client_key_allowed(item.get("client"), scope)]
 
 
 @router.post("/recall/{review_id}")
@@ -197,15 +199,18 @@ async def recommendations_sync(payload: RecSync, session: AsyncSession = Depends
 @router.get("/recommendations", dependencies=[Depends(get_current_user)])
 async def recommendations_list(client: str | None = Query(default=None, max_length=40),
                                status_filter: Literal["draft", "reviewed", "published", "dismissed"] | None = Query(default=None, alias="status"),
-                               session: AsyncSession = Depends(get_session)) -> list[dict]:
+                               session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)) -> list[dict]:
     from sqlalchemy import select
     from app.models.architecture import Recommendation
+    if client:
+        await require_client_access(session, current_user, client.strip())
+    scope = await allowed_entity_keys(session, current_user)
     stmt = select(Recommendation).order_by(Recommendation.created_at.desc(), Recommendation.id)
     if client:
         stmt = stmt.where(Recommendation.client_key == client.strip().lower())
     if status_filter:
         stmt = stmt.where(Recommendation.status == status_filter)
-    return [_rec_out(r) for r in (await session.scalars(stmt)).all()]
+    return [_rec_out(r) for r in (await session.scalars(stmt)).all() if client_key_allowed(r.client_key, scope)]
 
 
 @router.patch("/recommendations/{rec_id}")
@@ -374,7 +379,7 @@ async def fine_tuning_list_jobs(session: AsyncSession = Depends(get_session)) ->
             for r in await fine_tuning.list_jobs(session)]
 
 
-@router.get("/near-duplicates", dependencies=[Depends(get_current_user)])
+@router.get("/near-duplicates", dependencies=[Depends(require_admin)])  # corpus-wide maintenance report across all clients
 async def near_duplicates(threshold: float = Query(default=0.93, ge=0.5, le=1.0), limit: int = Query(default=50, ge=1, le=200),
                           session: AsyncSession = Depends(get_session)) -> dict:
     from app.services.retrieval import near_duplicates as find
@@ -403,16 +408,22 @@ async def materialize_intelligence(payload: MaterializeRequest, session: AsyncSe
 @router.get("/insights", dependencies=[Depends(get_current_user)])
 async def stored_insights(client: str | None = Query(default=None, max_length=40),
                           status_filter: Literal["draft", "published", "archived"] | None = Query(default=None, alias="status"),
-                          limit: int = Query(default=50, ge=1, le=200), session: AsyncSession = Depends(get_session)) -> list[dict]:
+                          limit: int = Query(default=50, ge=1, le=200), session: AsyncSession = Depends(get_session),
+                          current_user: User = Depends(get_current_user)) -> list[dict]:
     from sqlalchemy import select
     from app.models import Insight
     from app.models.entities import Entity
+    if client:
+        await require_client_access(session, current_user, client.strip())
+    scope = await allowed_entity_keys(session, current_user)
     stmt = (select(Insight, Entity.canonical_name).outerjoin(Entity, Entity.id == Insight.client_entity_id)
             .order_by(Insight.priority.desc().nullslast(), Insight.created_at.desc(), Insight.id).limit(limit))
     if client:
         stmt = stmt.where(sa_func.lower(Entity.canonical_key) == client.strip().lower())
     if status_filter:
         stmt = stmt.where(Insight.status == status_filter)
+    if scope is not None:
+        stmt = stmt.where(sa_func.lower(Entity.canonical_key).in_(scope))  # insights are always client-attributed
     return [{"id": str(i.id), "client": name, "title": i.title, "body": i.body, "insight_type": i.insight_type, "priority": i.priority,
              "status": i.status, "generated": i.insight_type == "llm_synthesis", "created_at": i.created_at.isoformat()}
             for i, name in (await session.execute(stmt)).all()]

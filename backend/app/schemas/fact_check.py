@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class FactCheckRequest(BaseModel):
-    input: str  # a headline, a paragraph of text, a URL, or a source name
+    input: str = Field(max_length=4000)  # a headline, a paragraph of text, a URL, or a source name
 
 
 class MatchedCoverage(BaseModel):

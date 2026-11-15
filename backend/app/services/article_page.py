@@ -27,6 +27,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.adapters.ingestion.base import clean_article_text, clean_text
+from app.core.net_safety import DEFAULT_MAX_BYTES, get_limited, safe_client
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ _BAD_IMAGE_HINTS = re.compile(
     re.I,
 )
 MIN_IMAGE_BYTES = 4_000
+MAX_IMAGE_BYTES = 10 * 1024 * 1024  # validation download cap (SSRF/DoS guard)
 MIN_IMAGE_SIDE = 120
 
 
@@ -229,9 +231,9 @@ def parse_article_html(html: str, url: str, final_url: str | None = None, status
 
 async def fetch_article_page(url: str, timeout: float = 12.0, client: httpx.AsyncClient | None = None) -> ArticlePage:
     own = client is None
-    client = client or httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=FETCH_HEADERS)
+    client = client or safe_client(timeout=timeout, follow_redirects=True, headers=FETCH_HEADERS)
     try:
-        response = await client.get(url)
+        response = await get_limited(client, url, max_bytes=DEFAULT_MAX_BYTES)
         if response.status_code != 200:
             return ArticlePage(url=url, final_url=str(response.url), status=response.status_code,
                                error=f"HTTP {response.status_code}")
@@ -265,7 +267,7 @@ async def validate_image(url: str, client: httpx.AsyncClient) -> tuple[bool, str
     if not is_acceptable_image_url(url):
         return False, "rejected-by-url-rules"
     try:
-        response = await client.get(url, headers={**FETCH_HEADERS, "Accept": "image/*"})
+        response = await get_limited(client, url, max_bytes=MAX_IMAGE_BYTES, headers={**FETCH_HEADERS, "Accept": "image/*"})
     except Exception as exc:
         return False, f"unreachable:{type(exc).__name__}"
     if response.status_code != 200:

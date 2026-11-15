@@ -39,6 +39,12 @@ def suggested_client_filters(query: str) -> dict[str, list[str]]:
         if any(re.search(r"\b" + re.escape(t) + r"\b", query, re.IGNORECASE) for t in terms if t and len(t) >= 3):
             named.append(name.lower())
     return {"client": sorted(named)} if named else {}
+def _CLIENT_ENTITY_KEYS() -> list[str]:
+    """Entity keys of every configured client (static and onboarded), read at call time."""
+    from app.config.clients import ENTITY_KEY_BY_CLIENT
+    return sorted({key.lower() for key in ENTITY_KEY_BY_CLIENT.values()} | {name.lower() for name in CLIENT_CONFIG})
+
+
 _MAX_TERMS = 8
 _STOPWORDS = frozenset("the and for with from that this are was were has have had its into over about after new of in on to is at by an as it or be".split())
 
@@ -67,7 +73,7 @@ async def _lexemes(session: AsyncSession, query: str) -> list[str]:
 
 
 def apply_filters(statement, *, entity_key=None, source=None, tier=None, source_class=None, topic=None,
-                  date_from=None, date_to=None, label=None, person=None, technology=None):
+                  date_from=None, date_to=None, label=None, person=None, technology=None, allowed_entity_keys=None):
     """Filters before ranking (PDF s.8): client/entity, taxonomy label, source class and tier, date range, person, technology.
     Shared by the lexical and the vector retriever so both search exactly the same corpus."""
     from app.models.architecture import ArticleLabel, DocumentAuthor
@@ -82,6 +88,15 @@ def apply_filters(statement, *, entity_key=None, source=None, tier=None, source_
                 Entity.entity_type == "ORG",
             )
         )
+    if allowed_entity_keys is not None:
+        # Authorization scope (not a user filter): an article attributed to a client is visible only if that client is
+        # allowed. Articles with no client attribution (research / technology records) are not client data and stay visible.
+        allowed = sorted({k.strip().lower() for k in allowed_entity_keys})
+        attributed = exists().where(EntityMention.article_id == Article.id, EntityMention.entity_id == Entity.id,
+                                    Entity.entity_type == "ORG", Entity.canonical_key.in_(_CLIENT_ENTITY_KEYS()))
+        permitted = exists().where(EntityMention.article_id == Article.id, EntityMention.entity_id == Entity.id,
+                                   Entity.entity_type == "ORG", Entity.canonical_key.in_(allowed)) if allowed else None
+        statement = statement.where(or_(~attributed, permitted) if permitted is not None else ~attributed)
     if source:
         statement = statement.where(func.lower(Source.name) == source.strip().lower())
     if tier:
@@ -128,6 +143,7 @@ async def search_articles(
     label: str | None = None,
     person: str | None = None,
     technology: str | None = None,
+    allowed_entity_keys: list[str] | None = None,
     limit: int = 20,
 ) -> ArticleSearchResponse:
     query = " ".join(query.split())
@@ -164,6 +180,7 @@ async def search_articles(
     statement = apply_filters(
         statement, entity_key=entity_key, source=source, tier=tier, source_class=source_class, topic=topic,
         date_from=date_from, date_to=date_to, label=label, person=person, technology=technology,
+        allowed_entity_keys=allowed_entity_keys,
     )
     statement = statement.order_by(
         desc(full_match), desc(client_named), desc("score"), nullslast(desc(Article.published_at)), Article.id

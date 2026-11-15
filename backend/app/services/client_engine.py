@@ -79,8 +79,9 @@ async def client_briefing(session: AsyncSession, client: str, **kw) -> Briefing:
                           {"client": resolve_client(client)[1]}, kw.get("as_of"))
 
 
-async def topic_briefing(session: AsyncSession, query: str, *, limit: int = 20, as_of: datetime | None = None) -> Briefing:
-    found = await search_with_evidence(session, query, limit=limit)
+async def topic_briefing(session: AsyncSession, query: str, *, limit: int = 20, as_of: datetime | None = None,
+                         allowed_entity_keys: list[str] | None = None) -> Briefing:
+    found = await search_with_evidence(session, query, limit=limit, allowed_entity_keys=allowed_entity_keys)
     resp = await intelligence_from_hits(session, found.query, found.results, as_of)
     return build_briefing(resp, resp.insights, resp.opportunities, resp.alerts, {"query": found.query}, as_of)
 

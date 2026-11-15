@@ -22,6 +22,8 @@ import re
 from urllib.parse import quote, urlparse
 
 import httpx
+
+from app.core.net_safety import safe_client
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -111,7 +113,7 @@ async def resolve_google_news_url(url: str, client: httpx.AsyncClient | None = N
         return legacy
 
     own = client is None
-    client = client or httpx.AsyncClient(timeout=15, follow_redirects=True, headers=_HEADERS)
+    client = client or safe_client(timeout=15, follow_redirects=True, headers=_HEADERS)
     try:
         sig = await _signature(client, gid)
         if not sig:

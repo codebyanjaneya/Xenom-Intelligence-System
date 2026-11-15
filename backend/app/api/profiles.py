@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import accessible_clients, get_current_user, require_admin, require_client_access
 from app.config.clients import get_all_clients
 from app.db.session import get_session, get_sessionmaker
 from app.models import User
@@ -91,15 +91,15 @@ async def _profile_out(session: AsyncSession, name: str) -> ProfileOut:
 
 
 @router.get("", dependencies=[Depends(get_current_user)])
-async def list_profiles(session: AsyncSession = Depends(get_session)) -> list[dict]:
+async def list_profiles(session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)) -> list[dict]:
     out = []
-    for name in get_all_clients():
+    for name in await accessible_clients(session, current_user):
         version, _data, origin = await prof.effective_profile(session, name)
         out.append({"client": name, "version": version, "origin": origin})
     return out
 
 
-@router.get("/audit", response_model=list[AuditOut], dependencies=[Depends(get_current_user)])
+@router.get("/audit", response_model=list[AuditOut], dependencies=[Depends(require_admin)])  # changes span every client
 async def audit_trail(limit: int = Query(default=50, ge=1, le=200), object_type: str | None = Query(default=None, max_length=60),
                       session: AsyncSession = Depends(get_session)) -> list[AuditOut]:
     stmt = select(ConfigAudit).order_by(ConfigAudit.created_at.desc(), ConfigAudit.id).limit(limit)
@@ -111,8 +111,10 @@ async def audit_trail(limit: int = Query(default=50, ge=1, le=200), object_type:
 
 
 @router.get("/{client}", response_model=ProfileOut, dependencies=[Depends(get_current_user)])
-async def get_profile(client: str, session: AsyncSession = Depends(get_session)) -> ProfileOut:
-    return await _profile_out(session, _resolve(client))
+async def get_profile(client: str, session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)) -> ProfileOut:
+    name = _resolve(client)
+    await require_client_access(session, current_user, name)
+    return await _profile_out(session, name)
 
 
 @router.put("/{client}", response_model=ProfileOut)
@@ -180,7 +182,8 @@ async def reevaluation_status(client: str, job_id: str) -> dict:
 # ---- suggest, then confirm --------------------------------------------------------------------------------------------
 @router.get("/{client}/suggestions", response_model=list[SuggestionOut], dependencies=[Depends(get_current_user)])
 async def list_suggestions(client: str, status_filter: str = Query(default="pending", alias="status", pattern="^(pending|accepted|dismissed)$"),
-                           session: AsyncSession = Depends(get_session)) -> list[SuggestionOut]:
+                           session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)) -> list[SuggestionOut]:
+    await require_client_access(session, current_user, _resolve(client))
     key = _resolve(client).lower()
     rows = (await session.scalars(select(ProfileSuggestion).where(ProfileSuggestion.client_key == key, ProfileSuggestion.status == status_filter)
                                   .order_by(ProfileSuggestion.created_at.desc(), ProfileSuggestion.id))).all()

@@ -26,6 +26,8 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import httpx
+
+from app.core.net_safety import safe_client
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.ingestion.base import AdapterError, NormalizedDocument
@@ -259,7 +261,7 @@ async def process_documents(
         await refresh_configs(session)  # saved client profiles (if any) become the rule configuration for this run
         ctx.label_profiles = await load_profiles(session)
 
-    async with httpx.AsyncClient(timeout=15, follow_redirects=True, headers=FETCH_HEADERS) as http:
+    async with safe_client(timeout=15, follow_redirects=True, headers=FETCH_HEADERS) as http:
         for doc in documents:
             try:
                 async with session.begin_nested():
