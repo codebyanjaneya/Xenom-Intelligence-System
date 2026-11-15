@@ -254,9 +254,9 @@ function ProfilesAdmin({ token, isAdmin }: { token: string; isAdmin: boolean }) 
       const p = await getProfile(token, client)
       setProfile(p)
       setDraft(Object.fromEntries(PROFILE_GROUPS.flatMap(g => g.fields).map(f => [f.key, (p.data[f.key] ?? []).join('\n')])))
-      setSuggestions(await listSuggestions(token, client)); setAudit(await getAudit(token, 'client_profile'))
+      setSuggestions(await listSuggestions(token, client)); setAudit(isAdmin ? await getAudit(token, 'client_profile') : [])  // audit is admin-only
     } catch (e) { setFail(message(e)) }
-  }, [token, client])
+  }, [token, client, isAdmin])
   useEffect(() => { load() }, [load])
   const proposed = (): ProfileData | undefined => profile ? ({ ...profile.data, ...Object.fromEntries(Object.entries(draft).map(([k, v]) => [k, lines(v)])) } as ProfileData) : undefined
   async function preview() { const d = proposed(); if (!d) return; setFail(''); try { setImpact(await previewProfile(token, client, d)) } catch (e) { setFail(message(e)) } }
@@ -487,7 +487,8 @@ function ReviewQueue({ token, isAdmin, clients }: { token: string; isAdmin: bool
 // ---- persisted insights: reviewed by a person before they count as published ----------------------------------------------
 export function InsightReview({ token, isAdmin }: { token: string; isAdmin: boolean }) {
   const { data, error, reload } = useAsync<StoredInsight[]>(() => listStoredInsights(token), [token])
-  const dup = useAsync(() => getNearDuplicates(token), [token])
+  // Near-duplicate report is corpus-wide (all clients), so the API serves it to administrators only.
+  const dup = useAsync(() => (isAdmin ? getNearDuplicates(token) : Promise.resolve(null)), [token, isAdmin])
   const [fail, setFail] = useState('')
   const [info, setInfo] = useState('')
   async function persist() { setFail(''); try { const r = await materializeIntelligence(token); setInfo(`Persisted: ${r.map(x => `${x.client}: ${x.insights_created ?? 0} insights, ${x.opportunities_created ?? 0} opportunities, ${x.alerts_created ?? 0} alerts`).join(' · ')}`); reload() } catch (e) { setFail(message(e)) } }
@@ -509,10 +510,10 @@ export function InsightReview({ token, isAdmin }: { token: string; isAdmin: bool
             </div>
           ))}</div>
         ) : <EmptyState text="No insight is stored yet." />)}</DataState>
-        <div>
+        {isAdmin && <div>
           <h3 className="text-[13px] font-semibold text-ink">Possible near-duplicates (report only)</h3>
           <DataState error={dup.error} ready={!!dup.data}>{dup.data && (dup.data.pairs.length ? dup.data.pairs.map((p, i) => <p key={i} className="text-xs text-ink-faint">{p.similarity}: {p.a.title} ↔ {p.b.title}</p>) : <Note>None at threshold {dup.data.threshold} (needs embedded chunks). {dup.data.note}</Note>)}</DataState>
-        </div>
+        </div>}
         <Fail text={fail} />
       </CardContent>
     </Card>
