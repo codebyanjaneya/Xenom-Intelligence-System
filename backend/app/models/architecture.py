@@ -12,6 +12,7 @@ from datetime import datetime
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Computed,
     DateTime,
     Float,
     ForeignKey,
@@ -21,8 +22,10 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.types import Vector
 
 from app.db.base import Base, UUIDMixin
 
@@ -65,6 +68,10 @@ class DynamicClient(Base, UUIDMixin):
 
 class SavedArticle(Base, UUIDMixin):
     __tablename__ = "saved_articles"
+
+    # Migration 0010 gives this table a database-side UUID default; mirror it so the metadata matches.
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
+                                          server_default=text("gen_random_uuid()"))
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     article_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("articles.id", ondelete="CASCADE"), nullable=False)
@@ -158,11 +165,16 @@ class DocumentChunk(Base, UUIDMixin):
     text_: Mapped[str] = mapped_column("text", Text, nullable=False)
     embedding_model: Mapped[str | None] = mapped_column(Text)
     embedded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # `embedding vector` and `search_vector tsvector` are created in the migration and read/written with SQL.
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=_NOW)
+    # Created by migration 0007. Declared so the metadata matches the schema; vectors and FTS are read/written with SQL
+    # only, so both columns are deferred (never loaded or written by ordinary ORM queries).
+    embedding: Mapped[str | None] = mapped_column(Vector(), deferred=True)
+    search_vector: Mapped[str | None] = mapped_column(TSVECTOR, Computed("to_tsvector('english', text)", persisted=True), deferred=True)
 
     __table_args__ = (
         UniqueConstraint("article_id", "field", "chunk_index", name="uq_document_chunks_article_id"),
+        Index("ix_document_chunks_search_vector", "search_vector", postgresql_using="gin"),
+        Index("ix_document_chunks_embedding_model", "embedding_model", postgresql_where=text("embedding IS NOT NULL")),
         CheckConstraint("field in ('title','summary','raw_text')", name="field_valid"),
         CheckConstraint("char_end >= char_start", name="offsets_valid"),
     )

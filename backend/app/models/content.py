@@ -11,6 +11,8 @@ from datetime import datetime
 
 from sqlalchemy import (
     CheckConstraint,
+    Computed,
+    Index,
     DateTime,
     Float,
     ForeignKey,
@@ -18,7 +20,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
@@ -71,8 +73,19 @@ class Article(Base, UUIDMixin, TimestampMixin):
     OpenAlex cited_by_count/venue). Never computed or estimated by XENOM; displayed as-is with attribution,
     or omitted when the source doesn't provide it. Not used for ranking/relevance — display only."""
 
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVECTOR,
+        Computed("setweight(to_tsvector('english', coalesce(title, '')), 'A') || "
+                 "setweight(to_tsvector('english', coalesce(summary, '')), 'B')", persisted=True),
+        deferred=True,
+    )
+    """Generated full-text vector (migration 0007): title weighted A, summary B. Read-only; queried with SQL."""
+
     __table_args__ = (
         UniqueConstraint("url", name="uq_articles_url"),
+        # Created by migration 0007 with raw SQL; declared here so autogenerate never proposes dropping them.
+        Index("ix_articles_search_vector", "search_vector", postgresql_using="gin"),
+        Index("ix_articles_title_trgm", "title", postgresql_using="gin", postgresql_ops={"title": "gin_trgm_ops"}),
         CheckConstraint(
             "relevance_score is null or (relevance_score >= 0 and relevance_score <= 1)",
             name="relevance_score_range",
