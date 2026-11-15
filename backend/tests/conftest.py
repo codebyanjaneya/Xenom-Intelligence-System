@@ -81,7 +81,7 @@ async def _truncate(maker) -> None:
         for table in ("client_profiles", "config_audit", "profile_suggestions", "client_sources", "recommendations",
                       "evaluation_runs", "evaluation_labels", "evaluation_sets", "review_items", "ai_usage", "alert_reads",
                       "alerts", "insight_claims", "insights", "claims", "opportunities", "xenom_capabilities",
-                      "fine_tune_jobs", "fine_tune_datasets", "saved_articles", "users"):
+                      "fine_tune_jobs", "fine_tune_datasets", "saved_articles", "briefings", "users"):
             await session.execute(text(f"DELETE FROM {table}"))
         await session.execute(text("DELETE FROM entities WHERE canonical_key NOT IN ('jcb','ace','definedge','ism','vips','vikas')"))
         await session.execute(text("DELETE FROM source_health"))
@@ -118,10 +118,16 @@ def _fake_user(role: str) -> User:
     )
 
 
-async def _persist_user(maker, user: User) -> None:
-    """User-scoped tables (e.g. saved_articles) FK to users.id, so the fixture user must actually exist."""
+async def _persist_user(maker, user: User, focus_clients: list[str] | None = None) -> None:
+    """User-scoped tables (e.g. saved_articles) FK to users.id, so the fixture user must actually exist.
+    ``focus_clients`` grants client access (non-admin users are default-deny without a grant)."""
+    from app.models import UserPreference
+
     async with maker() as session:
         session.add(user)
+        await session.flush()
+        if focus_clients is not None:
+            session.add(UserPreference(user_id=user.id, focus_clients=focus_clients))
         await session.commit()
 
 
@@ -137,11 +143,35 @@ def admin_client(_db_override, db_engine):
 
 @pytest.fixture
 def viewer_client(_db_override, db_engine):
+    """A provisioned VIEWER: granted every configured client (the read-only analyst the existing tests describe)."""
+    from app.config.clients import CLIENT_CONFIG
+
     user = _fake_user("VIEWER")
-    asyncio.run(_persist_user(async_sessionmaker(db_engine, expire_on_commit=False), user))
+    asyncio.run(_persist_user(async_sessionmaker(db_engine, expire_on_commit=False), user, focus_clients=list(CLIENT_CONFIG)))
     app.dependency_overrides[get_current_user] = lambda: user
     with TestClient(app) as client:
         yield client
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def viewer_factory(_db_override, db_engine):
+    """Build a VIEWER client with an explicit grant: ``focus_clients=None`` means no preference row (default-deny)."""
+    stack = []
+
+    def make(focus_clients: list[str] | None):
+        user = _fake_user("VIEWER")
+        user.email = f"viewer-{uuid.uuid4().hex[:8]}@test.local"
+        asyncio.run(_persist_user(async_sessionmaker(db_engine, expire_on_commit=False), user, focus_clients=focus_clients))
+        app.dependency_overrides[get_current_user] = lambda: user
+        client = TestClient(app)
+        client.__enter__()
+        stack.append(client)
+        return client, user
+
+    yield make
+    for client in stack:
+        client.__exit__(None, None, None)
     app.dependency_overrides.pop(get_current_user, None)
 
 
