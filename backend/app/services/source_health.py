@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from typing import Literal
 
 import httpx
+
+from app.core.net_safety import safe_client
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Source, SourceHealth
@@ -39,7 +41,7 @@ async def validate_source_health(session: AsyncSession, source: Source) -> Sourc
     error_message: str | None = None
 
     try:
-        async with httpx.AsyncClient(
+        async with safe_client(
             timeout=10.0,
             follow_redirects=True,
             http2=False,

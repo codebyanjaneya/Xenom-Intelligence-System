@@ -7,6 +7,8 @@ from urllib.parse import urlparse, parse_qs
 
 import httpx
 
+from app.core.net_safety import safe_client
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +29,7 @@ class UrlResolver:
             return None
 
         try:
-            async with httpx.AsyncClient(
+            async with safe_client(
                 timeout=self.timeout_seconds,
                 follow_redirects=True,
             ) as client:

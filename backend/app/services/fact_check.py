@@ -50,7 +50,7 @@ async def _external_coverage(query: str) -> list[ExternalCoverage]:
             for item in response.results]
 
 
-async def check_news(session: AsyncSession, raw_input: str) -> FactCheckResult:
+async def check_news(session: AsyncSession, raw_input: str, *, allowed_entity_keys: list[str] | None = None) -> FactCheckResult:
     clean = raw_input.strip()
     external: dict | None = None
 
@@ -67,7 +67,8 @@ async def check_news(session: AsyncSession, raw_input: str) -> FactCheckResult:
     else:
         query = _query_text(clean)
 
-    response = await retrieval_search(session, query, mode="lexical", limit=8) if query.strip() else None
+    response = (await retrieval_search(session, query, mode="lexical", limit=8, allowed_entity_keys=allowed_entity_keys)
+                if query.strip() else None)
     external_hits = await _external_coverage(query) if query.strip() else []
     hits = response.results if response else []
     matched = [MatchedCoverage(article_id=h.article_id, title=h.title, url=h.url, source=h.source,
@@ -109,8 +110,12 @@ async def check_news(session: AsyncSession, raw_input: str) -> FactCheckResult:
                 matched_coverage=[], external_coverage=external_hits, checked_against=len(hits), llm_used=False,
                 note=note, external_source=external,
             )
+        # A lexical hit only shows that stored articles share search terms with the input; without a verifier that
+        # judges whether they actually report the same claim, it is not corroboration, so the verdict stays UNVERIFIED.
         return FactCheckResult(
-            input=raw_input, verdict="LIKELY_REAL",
-            reasoning=f"{len(matched)} stored source(s) cover this claim (LLM unavailable, so this is a coverage match only, not a reasoned verdict).",
+            input=raw_input, verdict="UNVERIFIED",
+            reasoning=(f"{len(matched)} stored article(s) matched the search terms, but no verifier is configured to judge "
+                       "whether they report the same claim. Review the matched coverage below; this is a keyword match, "
+                       "not corroboration."),
             matched_coverage=matched, external_coverage=external_hits, checked_against=len(hits), llm_used=False, note=note, external_source=external,
         )

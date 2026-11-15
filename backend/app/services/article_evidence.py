@@ -89,10 +89,12 @@ async def search_with_evidence(
     technology: str | None = None,
     mode: str = "lexical",
     limit: int = 10,
+    allowed_entity_keys: list[str] | None = None,
 ) -> ArticleEvidenceResponse:
     found = await retrieve(
         session, query, mode=mode, entity_key=entity_key, source=source, date_from=date_from, date_to=date_to,
         tier=tier, source_class=source_class, topic=topic, label=label, person=person, technology=technology, limit=limit,
+        allowed_entity_keys=allowed_entity_keys,
     )
     ids = [h.article_id for h in found.results]
     rows = {}

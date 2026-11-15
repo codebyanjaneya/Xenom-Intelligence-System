@@ -84,7 +84,8 @@ def _rerank(hit: ArticleSearchHit, score: float, now: datetime) -> float:
 async def search(session: AsyncSession, query: str, *, mode: str = "lexical", limit: int = 20, **filters) -> ArticleSearchResponse:
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}")
-    filter_keys = ("entity_key", "source", "date_from", "date_to", "tier", "source_class", "topic", "label", "person", "technology")
+    filter_keys = ("entity_key", "source", "date_from", "date_to", "tier", "source_class", "topic", "label", "person", "technology",
+                   "allowed_entity_keys")
     filters = {k: filters.get(k) for k in filter_keys}
     query = " ".join(query.split())
     if not query:

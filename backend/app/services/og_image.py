@@ -10,6 +10,8 @@ import logging
 
 import httpx
 
+from app.core.net_safety import safe_client
+
 from app.services.article_page import FETCH_HEADERS, fetch_article_page, pick_valid_image
 from app.services.google_news_decoder import is_google_news_url, resolve_google_news_url
 
@@ -20,7 +22,7 @@ async def extract_og_image(url: str, timeout: int = 8) -> str | None:
     """Real publisher article image for ``url`` (Google wrapper links are resolved first), or None."""
     if not url:
         return None
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=FETCH_HEADERS) as client:
+    async with safe_client(timeout=timeout, follow_redirects=True, headers=FETCH_HEADERS) as client:
         target = await resolve_google_news_url(url, client) if is_google_news_url(url) else url
         if not target:
             return None
