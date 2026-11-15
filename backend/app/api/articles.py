@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Article, Entity, EntityMention, SavedArticle, Source, User
 
 from app.api.deps import get_current_user
-from app.api.deps import accessible_clients, require_client_access
+from app.api.deps import accessible_article_ids, accessible_clients, require_article_access, require_client_access
 from app.db.session import get_session
 from app.schemas.article import ArticleOut
 from app.services.articles import get_articles
@@ -35,7 +35,9 @@ async def list_saved_articles(current_user: User = Depends(get_current_user), se
     rows = (await session.scalars(select(Article).join(SavedArticle, SavedArticle.article_id == Article.id)
                                   .where(SavedArticle.user_id == current_user.id)
                                   .order_by(SavedArticle.created_at.desc()))).all()
-    return [await _saved_article_out(session, article) for article in rows]
+    # Defense in depth: a save made while the user had access must not keep exposing the article after access is revoked.
+    visible = await accessible_article_ids(session, current_user, [article.id for article in rows])
+    return [await _saved_article_out(session, article) for article in rows if article.id in visible]
 
 
 @router.put("/{article_id}/saved", response_model=ArticleOut)
@@ -43,6 +45,7 @@ async def save_article(article_id: uuid.UUID, current_user: User = Depends(get_c
     article = await session.get(Article, article_id)
     if article is None or article.processing_status != "accepted":
         raise HTTPException(status_code=404, detail="Article not found")
+    await require_article_access(session, current_user, article.id)  # before anything is stored or returned
     exists = await session.scalar(select(SavedArticle).where(SavedArticle.user_id == current_user.id, SavedArticle.article_id == article_id))
     if exists is None:
         session.add(SavedArticle(user_id=current_user.id, article_id=article_id))

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import accessible_clients, get_current_user, require_admin, require_client_access
+from app.api.deps import accessible_clients, allowed_entity_keys, get_current_user, require_admin, require_client_access
 from app.config.clients import CLIENT_CONFIG, get_all_clients
 from app.db.session import get_session
 from app.models import Source, User
@@ -205,9 +205,10 @@ async def get_client_briefing(client: str, limit: int = _LIMIT, date_from: datet
 
 @router.get("/briefing", response_model=Briefing, dependencies=[Depends(get_current_user)])
 async def get_topic_briefing(q: str = Query(min_length=1, max_length=500, pattern=r"^[^\x00]+$"), limit: int = Query(default=20, ge=1, le=50),
-                             as_of: datetime | None = None, session: AsyncSession = Depends(get_session)):
+                             as_of: datetime | None = None, session: AsyncSession = Depends(get_session),
+                             current_user: User = Depends(get_current_user)):
     try:
-        return await topic_briefing(session, q, limit=limit, as_of=as_of)
+        return await topic_briefing(session, q, limit=limit, as_of=as_of, allowed_entity_keys=await allowed_entity_keys(session, current_user))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
@@ -231,18 +232,30 @@ async def persist_client_briefing(client: str, limit: int = _LIMIT, as_of: datet
 
 
 @router.get("/briefings", response_model=list[StoredBriefingOut], dependencies=[Depends(get_current_user)])
-async def list_stored_briefings(session: AsyncSession = Depends(get_session)):
+async def list_stored_briefings(session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
     rows = await session.scalars(select(BriefingRow).order_by(BriefingRow.briefing_date.desc(), BriefingRow.title))
+    allowed = None if current_user.role == "ADMIN" else {c.casefold() for c in await accessible_clients(session, current_user)}
+
+    def visible(row) -> bool:
+        if allowed is None:
+            return True
+        client = ((row.payload or {}).get("scope") or {}).get("client")
+        return client is not None and str(client).casefold() in allowed  # topic briefings span clients: admin only
+
     return [StoredBriefingOut(id=str(r.id), briefing_date=r.briefing_date.isoformat(), title=r.title, payload=r.payload)
-            for r in rows]
+            for r in rows if visible(r)]
 
 
 # ---- cross-cutting views (all read-only, evidence-backed) ---------------------------------------------------------
 
 @router.get("/clients/summary", response_model=ClientSummaryView, dependencies=[Depends(get_current_user)])
-async def get_client_summary(session: AsyncSession = Depends(get_session)):
+async def get_client_summary(session: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
     """Per-client accepted/rejected counts straight from the database (the numbers the UI must show)."""
-    return await client_summary(session)
+    view = await client_summary(session)
+    if current_user.role != "ADMIN":
+        allowed = {c.casefold() for c in await accessible_clients(session, current_user)}
+        view.clients = [c for c in view.clients if c.client.casefold() in allowed]
+    return view
 
 
 @router.get("/technology", response_model=ThemeView, dependencies=[Depends(get_current_user)])
