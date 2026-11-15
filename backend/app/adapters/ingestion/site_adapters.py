@@ -24,6 +24,7 @@ from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
 
 from app.adapters.ingestion.base import AdapterError, NormalizedDocument, clean_text
+from app.core.net_safety import DEFAULT_MAX_BYTES, assert_public_url, get_limited, safe_client
 from app.services.article_page import FETCH_HEADERS, ArticlePage, fetch_article_page, parse_article_html
 
 logger = logging.getLogger(__name__)
@@ -61,10 +62,25 @@ async def render_html(url: str, wait_ms: int = 7000) -> str:
         from playwright.async_api import async_playwright
     except ImportError as exc:
         raise AdapterError("playwright is required to render this source") from exc
+    try:
+        await assert_public_url(url)
+    except httpx.RequestError as exc:
+        raise AdapterError(f"refusing to render {url}: {exc}") from exc
+
+    async def _guard(route) -> None:
+        # Every request the page makes (navigation, redirects, sub-resources) is checked like a direct fetch.
+        try:
+            await assert_public_url(route.request.url)
+        except httpx.RequestError:
+            await route.abort()
+            return
+        await route.continue_()
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         try:
             page = await browser.new_page()
+            await page.route("**/*", _guard)
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(wait_ms)
             return await page.content()
@@ -149,7 +165,7 @@ class ArticlePageAdapter:
 
     async def fetch(self, urls: list[str], *, source_id: uuid.UUID, retrieved_at: datetime) -> list[NormalizedDocument]:
         docs: list[NormalizedDocument] = []
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True, headers=FETCH_HEADERS) as client:
+        async with safe_client(timeout=15, follow_redirects=True, headers=FETCH_HEADERS) as client:
             for url in urls:
                 if not await robots_allowed(url, client):
                     self.errors.append(f"robots-disallowed: {url}")
@@ -206,13 +222,13 @@ class LinkListingAdapter:
         return links
 
     async def fetch(self, listing_url: str, *, source_id: uuid.UUID, retrieved_at: datetime) -> list[NormalizedDocument]:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True, headers=FETCH_HEADERS) as client:
+        async with safe_client(timeout=15, follow_redirects=True, headers=FETCH_HEADERS) as client:
             if not await robots_allowed(listing_url, client):
                 raise AdapterError(f"robots.txt disallows {listing_url}")
             if self.render:
                 listing_html, base_url = await render_html(listing_url), listing_url
             else:
-                response = await client.get(listing_url)
+                response = await get_limited(client, listing_url, max_bytes=DEFAULT_MAX_BYTES)
                 if response.status_code != 200:
                     raise AdapterError(f"listing returned HTTP {response.status_code}: {listing_url}")
                 listing_html, base_url = response.text, str(response.url)
@@ -265,14 +281,14 @@ class TableRowsAdapter:
 
     async def _html(self, url: str) -> str:
         if self.render:
-            async with httpx.AsyncClient(timeout=10, headers=FETCH_HEADERS) as robots_client:
+            async with safe_client(timeout=10, headers=FETCH_HEADERS) as robots_client:
                 if not await robots_allowed(url, robots_client):
                     raise AdapterError(f"robots.txt disallows {url}")
             return await render_html(url)
-        async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=FETCH_HEADERS) as client:
+        async with safe_client(timeout=20, follow_redirects=True, headers=FETCH_HEADERS) as client:
             if not await robots_allowed(url, client):
                 raise AdapterError(f"robots.txt disallows {url}")
-            response = await client.get(url)
+            response = await get_limited(client, url, max_bytes=DEFAULT_MAX_BYTES)
             if response.status_code != 200:
                 raise AdapterError(f"HTTP {response.status_code} for {url}")
             return response.text
@@ -354,7 +370,7 @@ class DefinedgeBlogAdapter:
         self.errors: list[str] = []
 
     async def fetch(self, *, source_id: uuid.UUID, retrieved_at: datetime) -> list[NormalizedDocument]:
-        async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=FETCH_HEADERS) as client:
+        async with safe_client(timeout=20, follow_redirects=True, headers=FETCH_HEADERS) as client:
             if not await robots_allowed(self.API, client):
                 raise AdapterError("robots.txt disallows the Definedge blog API")
             response = await client.get(self.API.format(limit=self.limit))

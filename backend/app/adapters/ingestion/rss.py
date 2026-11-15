@@ -10,7 +10,11 @@ from xml.etree import ElementTree
 import httpx
 from dataclasses import replace
 
+from app.core.net_safety import BlockedURLError, ResponseTooLargeError, get_limited, safe_client
+
 from .base import AdapterError, IngestionAdapter, NormalizedDocument, clean_text, retrieval_time
+
+MAX_FEED_BYTES = 10 * 1024 * 1024  # feeds are text; anything larger is broken or hostile
 
 
 class RssFixtureAdapter(IngestionAdapter):
@@ -188,8 +192,12 @@ class RssHttpAdapter(RssFixtureAdapter):
         response = None
         for attempt in range(3):
             try:
-                async with httpx.AsyncClient(timeout=self.timeout_seconds, follow_redirects=True, transport=self.transport) as client:
-                    response = await client.get(feed_url, headers={
+                # An injected transport is a test seam; every real fetch goes through the SSRF guard.
+                client_cm = (httpx.AsyncClient(timeout=self.timeout_seconds, follow_redirects=True, transport=self.transport)
+                             if self.transport is not None else
+                             safe_client(timeout=self.timeout_seconds, follow_redirects=True))
+                async with client_cm as client:
+                    response = await get_limited(client, feed_url, max_bytes=MAX_FEED_BYTES, headers={
                         "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml",
                         "Accept-Encoding": "identity",
                     })
@@ -206,6 +214,10 @@ class RssHttpAdapter(RssFixtureAdapter):
                 if attempt == 2:
                     raise AdapterError(f"RSS feed returned HTTP {exc.response.status_code}") from exc
                 await asyncio.sleep(2 ** attempt)
+            except BlockedURLError as exc:
+                raise AdapterError(f"RSS feed URL refused: {exc}") from exc  # not retried: a blocked host stays blocked
+            except ResponseTooLargeError as exc:
+                raise AdapterError(f"RSS feed too large: {exc}") from exc
             except httpx.RequestError as exc:
                 if attempt == 2:
                     raise AdapterError("RSS feed request failed") from exc
